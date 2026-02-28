@@ -75,4 +75,10 @@ public class InventoryRedisService {
         log.info("Raw value from Redis for key {}: {}", key, value);
         return value != null ? Long.parseLong(value) : 0L;
     }
+
+    public void restoreStock(String productId, int quantity) {
+        String key = RedisKeys.inventoryKey(productId);
+        stringRedisTemplate.opsForValue().increment(key, quantity);
+        log.info("Stock restored for productId: {}. Restored quantity: {}", productId, quantity);
+    }
 }
