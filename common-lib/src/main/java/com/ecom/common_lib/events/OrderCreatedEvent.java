@@ -15,5 +15,6 @@ public class OrderCreatedEvent {
     private UUID userId;
     private UUID productId;
     private int quantity;
+    private String status;
     private Instant createdAt;
 }
