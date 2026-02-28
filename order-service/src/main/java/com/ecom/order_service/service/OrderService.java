@@ -1,10 +1,12 @@
 package com.ecom.order_service.service;
 
 import com.ecom.common_lib.constants.RedisKeys;
+import com.ecom.common_lib.events.OrderCreatedEvent;
 import com.ecom.order_service.dto.CreateOrderRequest;
 import com.ecom.order_service.dto.CreateOrderResponse;
 import com.ecom.order_service.entity.Order;
 import com.ecom.order_service.entity.OrderStatus;
+import com.ecom.order_service.event.OrderEventPublisher;
 import com.ecom.order_service.exception.DuplicateOrderException;
 import com.ecom.order_service.exception.InsufficientStockException;
 import com.ecom.order_service.exception.OrderLockException;
@@ -25,6 +27,7 @@ public class OrderService {
     private final RedisTemplate<String, Object> redisTemplate;
     private final RedisLockService redisLockService;
     private final InventoryRedisService inventoryRedisService;
+    private final OrderEventPublisher orderEventPublisher;
 
     public CreateOrderResponse createOrder(CreateOrderRequest request) {
 
@@ -40,33 +43,32 @@ public class OrderService {
                     + request.getRequestId());
         }
 
-        // Step 2: Acquire distributed lock per user
         String lockKey = RedisKeys.orderLockKey(request.getUserId().toString());
         boolean lockAcquired = redisLockService.acquireLock(lockKey);
 
         if (!lockAcquired) {
-            // Lock failed — delete idempotency key so client can retry
             redisTemplate.delete(idempotencyKey);
             throw new OrderLockException("Another order is being processed for this user. "
                     + "Please try again.");
         }
 
+        Order savedOrder = null;
+        boolean stockDecremented = false;
+
         try {
-            // Step 3: Check and decrement inventory atomically
-            boolean stockReserved = inventoryRedisService.decrementStock(
+            // Step 2: Check and decrement inventory atomically
+            stockDecremented = inventoryRedisService.decrementStock(
                     request.getProductId().toString(),
                     request.getQuantity()
             );
 
-            if (!stockReserved) {
-                // Stock failed — delete idempotency key so client can retry
-                // Do NOT keep the key — this wasn't a successful processing
+            if (!stockDecremented) {
                 redisTemplate.delete(idempotencyKey);
                 throw new InsufficientStockException("Insufficient stock for product: "
                         + request.getProductId());
             }
 
-            // Step 4: Save order
+            // Step 3: Save order to DB
             Order order = Order.builder()
                     .userId(request.getUserId())
                     .productId(request.getProductId())
@@ -74,10 +76,22 @@ public class OrderService {
                     .status(OrderStatus.PENDING)
                     .build();
 
-            Order savedOrder = orderRepository.save(order);
+            savedOrder = orderRepository.save(order);
+            log.info("Order saved to DB. orderId: {}", savedOrder.getId());
 
-            // Step 5: Update idempotency key with final orderId
-            // This marks the request as fully processed
+            // Step 4: Publish event to SNS
+            OrderCreatedEvent event = OrderCreatedEvent.builder()
+                    .orderId(savedOrder.getId())
+                    .userId(savedOrder.getUserId())
+                    .productId(savedOrder.getProductId())
+                    .quantity(savedOrder.getQuantity())
+                    .status(savedOrder.getStatus().name())
+                    .createdAt(savedOrder.getCreatedAt())
+                    .build();
+
+            orderEventPublisher.publishOrderCreated(event);
+
+            // Step 5: Only update idempotency key after everything succeeds
             redisTemplate.opsForValue().set(
                     idempotencyKey,
                     savedOrder.getId().toString(),
@@ -93,17 +107,34 @@ public class OrderService {
                     .build();
 
         } catch (InsufficientStockException | OrderLockException e) {
-            // These are business exceptions — already handled above
             throw e;
 
         } catch (Exception e) {
-            // Unexpected failure — delete idempotency key so client can retry
+            log.error("Order creation failed for requestId: {}. Rolling back.",
+                    request.getRequestId(), e);
+
+            // Compensating transaction — undo everything
+            // Restore Redis inventory if it was decremented
+            if (stockDecremented) {
+                inventoryRedisService.restoreStock(
+                        request.getProductId().toString(),
+                        request.getQuantity()
+                );
+                log.info("Inventory restored for productId: {}", request.getProductId());
+            }
+
+            // Delete orphaned DB order if it was saved
+            if (savedOrder != null) {
+                orderRepository.delete(savedOrder);
+                log.info("Orphaned order deleted. orderId: {}", savedOrder.getId());
+            }
+
+            // Delete idempotency key so client can retry
             redisTemplate.delete(idempotencyKey);
-            log.error("Order creation failed for requestId: {}", request.getRequestId(), e);
+
             throw e;
 
         } finally {
-            // Always release lock
             redisLockService.releaseLock(lockKey);
         }
     }
