@@ -14,6 +14,7 @@ public class InventoryReservedEvent {
 
     private UUID orderId;
     private UUID productId;
+    private UUID userId;
     private int quantity;
     private BigDecimal amount;
     private String correlationId;

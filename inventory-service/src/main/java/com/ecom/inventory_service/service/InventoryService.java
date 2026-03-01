@@ -65,6 +65,7 @@ public class InventoryService {
                 .orderId(event.getOrderId())
                 .productId(event.getProductId())
                 .quantity(event.getQuantity())
+                .userId(event.getUserId())
                 .amount(BigDecimal.valueOf(event.getQuantity() * 100L))
                 .correlationId(correlationId)
                 .reservedAt(Instant.now())
