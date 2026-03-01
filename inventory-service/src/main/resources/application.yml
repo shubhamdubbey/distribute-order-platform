@@ -1,0 +1,35 @@
+spring:
+  application:
+    name: inventory-service
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/orderdb?TimeZone=Asia/Kolkata
+    username: admin
+    password: admin
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+
+server:
+  port: 8082
+
+cloud:
+  aws:
+    credentials:
+
+      instance-profile: false
+    region:
+      static: ap-southeast-2
+    sqs:
+      listener:
+        auto-startup: true
+    sns:
+      topic:
+        order-events-arn: arn:aws:sns:ap-southeast-2:211888003693:order-events
+
+logging:
+  level:
+    com.ecom: DEBUG
