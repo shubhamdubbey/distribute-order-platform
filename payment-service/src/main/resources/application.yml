@@ -1,0 +1,28 @@
+spring:
+  application:
+    name: payment-service
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/orderdb?TimeZone=Asia/Kolkata
+    username: admin
+    password: admin
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+
+server:
+  port: 8083
+
+cloud:
+  aws:
+    credentials:
+      access-key: YOUR_ACCESS_KEY
+      secret-key: YOUR_SECRET_KEY
+    region:
+      static: ap-southeast-2
+    sns:
+      topic:
+        order-events-arn: arn:aws:sns:ap-southeast-2:211888003693:order-events
