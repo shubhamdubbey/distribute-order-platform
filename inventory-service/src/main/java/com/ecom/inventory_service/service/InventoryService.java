@@ -14,6 +14,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -64,6 +65,7 @@ public class InventoryService {
                 .orderId(event.getOrderId())
                 .productId(event.getProductId())
                 .quantity(event.getQuantity())
+                .amount(BigDecimal.valueOf(event.getQuantity() * 100L))
                 .correlationId(correlationId)
                 .reservedAt(Instant.now())
                 .build();
