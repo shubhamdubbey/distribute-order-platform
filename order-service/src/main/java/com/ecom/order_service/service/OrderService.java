@@ -11,12 +11,15 @@ import com.ecom.order_service.exception.DuplicateOrderException;
 import com.ecom.order_service.exception.InsufficientStockException;
 import com.ecom.order_service.exception.OrderLockException;
 import com.ecom.order_service.repository.OrderRepository;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
+import java.util.Optional;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -137,5 +140,91 @@ public class OrderService {
         } finally {
             redisLockService.releaseLock(lockKey);
         }
+    }
+    @Transactional
+    public boolean updateOrderStatus(UUID orderId, OrderStatus newStatus) {
+        Optional<Order> optionalOrder = orderRepository.findById(orderId);
+
+        if (optionalOrder.isEmpty()) {
+            log.error("Order not found for orderId: {} in updateOrderStatus", orderId);
+            return false;
+        }
+
+        Order order = optionalOrder.get();
+
+        // Guard — don't update terminal status orders
+        if (order.getStatus() == OrderStatus.CANCELLED
+                || order.getStatus() == OrderStatus.CONFIRMED) {
+            log.warn("Order {} already in terminal status {}. Skipping update.",
+                    orderId, order.getStatus());
+            return false;
+        }
+
+        OrderStatus previousStatus = order.getStatus();
+        order.setStatus(newStatus);
+        orderRepository.save(order);
+
+        log.info("Order {} status updated from {} to {}",
+                orderId, previousStatus, newStatus);
+        return true;
+    }
+
+    @Transactional
+    public boolean handleInventoryFailed(UUID orderId, UUID productId, int quantity) {
+        Optional<Order> optionalOrder = orderRepository.findById(orderId);
+
+        if (optionalOrder.isEmpty()) {
+            log.error("Order not found for orderId: {} in handleInventoryFailed", orderId);
+            return false;
+        }
+
+        Order order = optionalOrder.get();
+
+        // Guard — don't cancel already terminal orders
+        if (order.getStatus() == OrderStatus.CANCELLED
+                || order.getStatus() == OrderStatus.CONFIRMED) {
+            log.warn("Order {} already in terminal status {}. Skipping cancellation.",
+                    orderId, order.getStatus());
+            return false;
+        }
+
+        order.setStatus(OrderStatus.CANCELLED);
+        orderRepository.save(order);
+
+        // Restore Redis inventory
+        inventoryRedisService.restoreStock(productId.toString(), quantity);
+
+        log.info("Order {} cancelled due to inventory failure. " +
+                        "Stock restored for productId: {}, quantity: {}",
+                orderId, productId, quantity);
+        return true;
+    }
+
+    @Transactional
+    public boolean handlePaymentFailed(UUID orderId){
+        Optional<Order> optionalOrder = orderRepository.findById(orderId);
+
+        if (optionalOrder.isEmpty()) {
+            log.error("Order not found for orderId: {} in handlePaymentFailed", orderId);
+            return false;
+        }
+
+        Order order = optionalOrder.get();
+
+        // Guard — don't cancel already terminal orders
+        if (order.getStatus() == OrderStatus.CANCELLED
+                || order.getStatus() == OrderStatus.CONFIRMED) {
+            log.warn("Order {} already in terminal status {}. Skipping cancellation.",
+                    orderId, order.getStatus());
+            return false;
+        }
+
+        order.setStatus(OrderStatus.PAYMENT_FAILED);
+        orderRepository.save(order);
+
+        inventoryRedisService.restoreStock(order.getProductId().toString(), order.getQuantity());
+
+        log.info("Order {} cancelled due to payment failure. " , orderId);
+        return true;
     }
 }

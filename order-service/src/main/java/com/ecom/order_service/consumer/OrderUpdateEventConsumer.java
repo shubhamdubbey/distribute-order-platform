@@ -1,8 +1,10 @@
 package com.ecom.order_service.consumer;
 
 
-import com.ecom.common_lib.events.InventorySeededEvent;
+import com.ecom.common_lib.events.*;
+import com.ecom.order_service.entity.OrderStatus;
 import com.ecom.order_service.service.InventoryRedisService;
+import com.ecom.order_service.service.OrderService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.awspring.cloud.sqs.annotation.SqsListener;
@@ -17,10 +19,11 @@ import java.util.UUID;
 @Component
 @RequiredArgsConstructor
 @Slf4j
-public class InventoryEventConsumer {
+public class OrderUpdateEventConsumer {
 
     private final InventoryRedisService inventoryRedisService;
     private final ObjectMapper objectMapper;
+    private final OrderService orderService;
 
     @SqsListener("order-updates-queue")
     public void handleInventoryEvent(Message<String> message) {
@@ -61,13 +64,46 @@ public class InventoryEventConsumer {
                     handleInventorySeeded(event);
                 }
                 case "INVENTORY_RESERVED" -> {
-                    log.info("Inventory reserved — order status update coming soon");
-                    // Will implement when we build order status update flow
+                    InventoryReservedEvent event = objectMapper.readValue(
+                            actualMessage, InventoryReservedEvent.class);
+                    boolean result = orderService.updateOrderStatus(
+                            event.getOrderId(), OrderStatus.PAYMENT_PROCESSING);
+                    if (!result) {
+                        log.error("Failed to update order status in reserved inventory flow for orderId: {}",
+                                event.getOrderId());
+                    }
                 }
                 case "INVENTORY_FAILED" -> {
-                    log.info("Inventory failed — order status update coming soon");
-                    // Will implement when we build order status update flow
+                    InventoryFailedEvent event = objectMapper.readValue(
+                            actualMessage, InventoryFailedEvent.class);
+                    boolean result = orderService.handleInventoryFailed(
+                            event.getOrderId(), event.getProductId(), event.getQuantity());
+                    if (!result) {
+                        log.error("Failed to handle inventory failure for orderId: {}",
+                                event.getOrderId());
+                    }
                 }
+                case "PAYMENT_SUCCESS" -> {
+                    PaymentSuccessEvent event = objectMapper.readValue(
+                            actualMessage, PaymentSuccessEvent.class);
+                    boolean result = orderService.updateOrderStatus(
+                            event.getOrderId(), OrderStatus.CONFIRMED);
+                    if (!result) {
+                        log.error("Failed to update order status in payment success flow for orderId: {}",
+                                event.getOrderId());
+                    }
+                }
+                case "PAYMENT_FAILED" -> {
+                    PaymentFailedEvent event = objectMapper.readValue(
+                            actualMessage, PaymentFailedEvent.class);
+                    boolean result = orderService.handlePaymentFailed(
+                            event.getOrderId());
+                    if (!result) {
+                        log.error("Failed to handle payment failure for orderId: {}",
+                                event.getOrderId());
+                    }
+                }
+
                 default -> log.warn("Unknown event type: {}, skipping", eventType);
             }
 
