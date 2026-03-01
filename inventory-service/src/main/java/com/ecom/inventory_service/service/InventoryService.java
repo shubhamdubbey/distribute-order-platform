@@ -1,13 +1,13 @@
 package com.ecom.inventory_service.service;
 
 
+import com.ecom.common_lib.events.InventoryFailedEvent;
+import com.ecom.common_lib.events.InventoryReservedEvent;
 import com.ecom.common_lib.events.InventorySeededEvent;
 import com.ecom.common_lib.events.OrderCreatedEvent;
 import com.ecom.inventory_service.dto.InventoryResponse;
 import com.ecom.inventory_service.entity.Inventory;
 import com.ecom.inventory_service.event.InventoryEventPublisher;
-import com.ecom.inventory_service.event.InventoryFailedEvent;
-import com.ecom.inventory_service.event.InventoryReservedEvent;
 import com.ecom.inventory_service.repository.InventoryRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

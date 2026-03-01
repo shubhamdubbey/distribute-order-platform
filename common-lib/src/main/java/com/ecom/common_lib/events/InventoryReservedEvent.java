@@ -1,4 +1,4 @@
-package com.ecom.inventory_service.event;
+package com.ecom.common_lib.events;
 
 import lombok.*;
 
@@ -9,12 +9,11 @@ import java.util.UUID;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class InventoryFailedEvent {
+public class InventoryReservedEvent {
 
     private UUID orderId;
     private UUID productId;
     private int quantity;
-    private String reason;
     private String correlationId;
-    private Instant failedAt;
+    private Instant reservedAt;
 }

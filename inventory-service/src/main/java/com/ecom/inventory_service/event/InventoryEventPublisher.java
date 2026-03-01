@@ -1,5 +1,7 @@
 package com.ecom.inventory_service.event;
 
+import com.ecom.common_lib.events.InventoryFailedEvent;
+import com.ecom.common_lib.events.InventoryReservedEvent;
 import com.ecom.common_lib.events.InventorySeededEvent;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.awspring.cloud.sns.core.SnsTemplate;
