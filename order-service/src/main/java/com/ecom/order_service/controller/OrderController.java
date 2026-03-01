@@ -19,14 +19,6 @@ public class OrderController {
 
     private final InventoryRedisService inventoryRedisService;
 
-    @PostMapping("/inventory/seed")
-    public ResponseEntity<String> seedInventory(
-            @RequestParam String productId,
-            @RequestParam int quantity) {
-        inventoryRedisService.seedInventory(productId, quantity);
-        return ResponseEntity.ok("Inventory seeded: " + quantity + " units for " + productId);
-    }
-
     @GetMapping("/inventory/{productId}")
     public ResponseEntity<Long> getStock(@PathVariable String productId) {
         return ResponseEntity.ok(inventoryRedisService.getStock(productId));
