@@ -1,10 +1,7 @@
 package com.ecom.inventory_service.service;
 
 
-import com.ecom.common_lib.events.InventoryFailedEvent;
-import com.ecom.common_lib.events.InventoryReservedEvent;
-import com.ecom.common_lib.events.InventorySeededEvent;
-import com.ecom.common_lib.events.OrderCreatedEvent;
+import com.ecom.common_lib.events.*;
 import com.ecom.inventory_service.dto.InventoryResponse;
 import com.ecom.inventory_service.entity.Inventory;
 import com.ecom.inventory_service.event.InventoryEventPublisher;
@@ -110,6 +107,89 @@ public class InventoryService {
         eventPublisher.publishInventorySeeded(event);
 
         return mapToResponse(inventory);
+    }
+
+    @Transactional
+    public void handlePaymentSuccess(PaymentSuccessEvent event) {
+
+        log.info("Handling PAYMENT_SUCCESS for orderId: {}, productId: {}",
+                event.getOrderId(), event.getProductId());
+
+        Inventory inventory = inventoryRepository
+                .findByProductIdWithLock(event.getProductId())
+                .orElse(null);
+
+        if (inventory == null) {
+            log.error("Inventory not found for productId: {} during PAYMENT_SUCCESS",
+                    event.getProductId());
+            return;
+        }
+
+        // Guard — reserved quantity can't go below zero
+        if (inventory.getReservedQuantity() < event.getQuantity()) {
+            log.error("Reserved quantity {} less than requested {} for productId: {}",
+                    inventory.getReservedQuantity(),
+                    event.getQuantity(),
+                    event.getProductId());
+            return;
+        }
+
+        // Decrement reserved quantity — payment fulfilled
+        // availableQuantity stays same — already decremented when order placed
+        inventory.setReservedQuantity(
+                inventory.getReservedQuantity() - event.getQuantity()
+        );
+
+        inventoryRepository.save(inventory);
+
+        log.info("PAYMENT_SUCCESS handled for orderId: {}. " +
+                        "reservedQuantity now: {} for productId: {}",
+                event.getOrderId(),
+                inventory.getReservedQuantity(),
+                event.getProductId());
+    }
+
+    @Transactional
+    public void handlePaymentFailed(PaymentFailedEvent event) {
+
+        log.info("Handling PAYMENT_FAILED for orderId: {}, productId: {}",
+                event.getOrderId(), event.getProductId());
+
+        Inventory inventory = inventoryRepository
+                .findByProductIdWithLock(event.getProductId())
+                .orElse(null);
+
+        if (inventory == null) {
+            log.error("Inventory not found for productId: {} during PAYMENT_FAILED",
+                    event.getProductId());
+            return;
+        }
+
+        // Guard
+        if (inventory.getReservedQuantity() < event.getQuantity()) {
+            log.error("Reserved quantity {} less than requested {} for productId: {}",
+                    inventory.getReservedQuantity(),
+                    event.getQuantity(),
+                    event.getProductId());
+            return;
+        }
+
+        // Restore available quantity and decrement reserved
+        inventory.setAvailableQuantity(
+                inventory.getAvailableQuantity() + event.getQuantity()
+        );
+        inventory.setReservedQuantity(
+                inventory.getReservedQuantity() - event.getQuantity()
+        );
+
+        inventoryRepository.save(inventory);
+
+        log.info("PAYMENT_FAILED handled for orderId: {}. " +
+                        "availableQuantity restored to: {}, reservedQuantity: {} for productId: {}",
+                event.getOrderId(),
+                inventory.getAvailableQuantity(),
+                inventory.getReservedQuantity(),
+                event.getProductId());
     }
 
     public InventoryResponse getInventory(String productId) {

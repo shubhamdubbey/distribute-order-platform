@@ -14,6 +14,9 @@ public class PaymentFailedEvent {
     private UUID orderId;
     private UUID userId;
     private int amount;
+    private UUID productId;
+    private int quantity;
     private String correlationId;
     private Instant failedAt;
+    private String reason;
 }

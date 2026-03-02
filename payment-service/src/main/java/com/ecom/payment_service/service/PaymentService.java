@@ -113,6 +113,8 @@ public class PaymentService {
                 .orderId(event.getOrderId())
                 .userId(event.getUserId())
                 .reason(reason)
+                .productId(event.getProductId())
+                .quantity(event.getQuantity())
                 .correlationId(correlationId)
                 .failedAt(Instant.now())
                 .build();
