@@ -10,6 +10,7 @@ import com.ecom.order_service.event.OrderEventPublisher;
 import com.ecom.order_service.exception.DuplicateOrderException;
 import com.ecom.order_service.exception.InsufficientStockException;
 import com.ecom.order_service.exception.OrderLockException;
+import com.ecom.order_service.exception.RateLimitException;
 import com.ecom.order_service.repository.OrderRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -30,9 +31,23 @@ public class OrderService {
     private final RedisTemplate<String, Object> redisTemplate;
     private final RedisLockService redisLockService;
     private final InventoryRedisService inventoryRedisService;
+    private final RateLimiterService rateLimiterService;
     private final OrderEventPublisher orderEventPublisher;
 
     public CreateOrderResponse createOrder(CreateOrderRequest request) {
+
+        // Step 0: Rate limiting — check before anything else
+        RateLimiterService.RateLimitResult rateLimitResult =
+                rateLimiterService.tryConsume(request.getUserId().toString());
+
+        if (!rateLimitResult.allowed()) {
+            throw new RateLimitException(
+                    "Rate limit exceeded. Maximum 5 orders per minute allowed. " +
+                            "Please try again after 60 seconds.");
+        }
+
+        log.info("Rate limit passed for userId: {}. Tokens remaining: {}",
+                request.getUserId(), rateLimitResult.remainingTokens());
 
         // Step 1: Idempotency check
         String idempotencyKey = RedisKeys.idempotencyKey(request.getRequestId());

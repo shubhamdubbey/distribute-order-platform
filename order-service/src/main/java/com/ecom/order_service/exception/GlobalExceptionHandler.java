@@ -18,6 +18,16 @@ public class GlobalExceptionHandler {
                 .body(Map.of("error", ex.getMessage()));
     }
 
+    @ExceptionHandler(RateLimitException.class)
+    public ResponseEntity<Map<String, String>> handleRateLimit(RateLimitException ex) {
+        return ResponseEntity
+                .status(HttpStatus.TOO_MANY_REQUESTS)
+                .body(Map.of(
+                        "error", ex.getMessage(),
+                        "retryAfter", "60 seconds"
+                ));
+    }
+
     @ExceptionHandler(OrderLockException.class)
     public ResponseEntity<Map<String, String>> handleOrderLock(OrderLockException ex) {
         return ResponseEntity
