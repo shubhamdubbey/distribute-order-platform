@@ -19,13 +19,19 @@ server:
 cloud:
   aws:
     credentials:
-
+      access-key: abcd
+      secret-key: efgh
       instance-profile: false
     region:
       static: ap-southeast-2
     sqs:
       listener:
         auto-startup: true
+      inventory-dlq-url: https://sqs.ap-southeast-2.amazonaws.com/211888003693/inventory-dlq
+      inventory-queue-url: https://sqs.ap-southeast-2.amazonaws.com/211888003693/inventory-queue
+      inventory-payment-dlq-url: https://sqs.ap-southeast-2.amazonaws.com/211888003693/inventory-payment-dlq
+      inventory-payment-queue-url: https://sqs.ap-southeast-2.amazonaws.com/211888003693/inventory-payment-queue
+
     sns:
       topic:
         order-events-arn: arn:aws:sns:ap-southeast-2:211888003693:order-events

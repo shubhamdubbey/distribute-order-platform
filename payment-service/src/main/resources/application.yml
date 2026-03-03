@@ -19,10 +19,13 @@ server:
 cloud:
   aws:
     credentials:
-      access-key: YOUR_ACCESS_KEY
-      secret-key: YOUR_SECRET_KEY
+      access-key: abcd
+      secret-key: efgh
     region:
       static: ap-southeast-2
     sns:
       topic:
         order-events-arn: arn:aws:sns:ap-southeast-2:211888003693:order-events
+    sqs:
+      dlq-url: https://sqs.ap-southeast-2.amazonaws.com/211888003693/payment-dlq
+      payment-queue-url: https://sqs.ap-southeast-2.amazonaws.com/211888003693/payment-queue
