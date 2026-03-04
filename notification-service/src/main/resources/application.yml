@@ -22,7 +22,6 @@ spring:
         static: ap-southeast-2
       sqs:
         notification-queue-url: https://sqs.ap-southeast-2.amazonaws.com/211888003693/notification-queue
-        notification-dlq-url: https://sqs.ap-southeast-2.amazonaws.com/211888003693/notification-dlq-queue
 
 server:
   port: 8084
@@ -31,3 +30,4 @@ notification:
   ses:
     sender-email: shubhamd1109@gmail.com
     sender-name: Order Platform
+    test-recipient-email: shubhamdubbey2001@gmail.com
