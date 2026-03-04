@@ -2,6 +2,7 @@ package com.ecom.common_lib.events;
 
 import lombok.*;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -16,5 +17,6 @@ public class OrderCreatedEvent {
     private UUID productId;
     private int quantity;
     private String status;
+    private BigDecimal amount;
     private Instant createdAt;
 }

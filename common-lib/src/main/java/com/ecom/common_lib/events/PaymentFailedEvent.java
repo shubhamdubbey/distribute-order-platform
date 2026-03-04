@@ -2,6 +2,7 @@ package com.ecom.common_lib.events;
 
 import lombok.*;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -13,7 +14,7 @@ public class PaymentFailedEvent {
 
     private UUID orderId;
     private UUID userId;
-    private int amount;
+    private BigDecimal amount;
     private UUID productId;
     private int quantity;
     private String correlationId;

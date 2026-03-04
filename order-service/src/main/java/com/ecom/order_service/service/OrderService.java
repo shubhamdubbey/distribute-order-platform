@@ -18,6 +18,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.time.Duration;
 import java.util.Optional;
 import java.util.UUID;
@@ -157,7 +158,7 @@ public class OrderService {
         }
     }
     @Transactional
-    public boolean updateOrderStatus(UUID orderId, OrderStatus newStatus) {
+    public boolean updateOrderStatus(UUID orderId, OrderStatus newStatus, BigDecimal amount) {
         Optional<Order> optionalOrder = orderRepository.findById(orderId);
 
         if (optionalOrder.isEmpty()) {
@@ -178,6 +179,20 @@ public class OrderService {
         OrderStatus previousStatus = order.getStatus();
         order.setStatus(newStatus);
         orderRepository.save(order);
+
+        if(newStatus == OrderStatus.CONFIRMED){
+            OrderCreatedEvent event = OrderCreatedEvent.builder()
+                    .orderId(order.getId())
+                    .userId(order.getUserId())
+                    .productId(order.getProductId())
+                    .quantity(order.getQuantity())
+                    .status(order.getStatus().name())
+                    .createdAt(order.getCreatedAt())
+                    .amount(amount)
+                    .build();
+
+            orderEventPublisher.publishOrderPlaced(event);
+        }
 
         log.info("Order {} status updated from {} to {}",
                 orderId, previousStatus, newStatus);

@@ -117,6 +117,7 @@ public class PaymentService {
                 .quantity(event.getQuantity())
                 .correlationId(correlationId)
                 .failedAt(Instant.now())
+                .amount(event.getAmount())
                 .build();
 
         eventPublisher.publishPaymentFailed(failedEvent);

@@ -67,7 +67,7 @@ public class OrderUpdateEventConsumer {
                     InventoryReservedEvent event = objectMapper.readValue(
                             actualMessage, InventoryReservedEvent.class);
                     boolean result = orderService.updateOrderStatus(
-                            event.getOrderId(), OrderStatus.PAYMENT_PROCESSING);
+                            event.getOrderId(), OrderStatus.PAYMENT_PROCESSING, event.getAmount());
                     if (!result) {
                         log.error("Failed to update order status in reserved inventory flow for orderId: {}",
                                 event.getOrderId());
@@ -87,7 +87,7 @@ public class OrderUpdateEventConsumer {
                     PaymentSuccessEvent event = objectMapper.readValue(
                             actualMessage, PaymentSuccessEvent.class);
                     boolean result = orderService.updateOrderStatus(
-                            event.getOrderId(), OrderStatus.CONFIRMED);
+                            event.getOrderId(), OrderStatus.CONFIRMED, event.getAmount());
                     if (!result) {
                         log.error("Failed to update order status in payment success flow for orderId: {}",
                                 event.getOrderId());

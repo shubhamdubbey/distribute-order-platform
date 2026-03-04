@@ -43,4 +43,27 @@ public class OrderEventPublisher {
             throw new RuntimeException("Failed to publish order event", e);
         }
     }
+
+    public void publishOrderPlaced(OrderCreatedEvent event) {
+        try {
+            String message = objectMapper.writeValueAsString(event);
+
+            // Pass correlationId as message attribute
+            // So downstream services can continue the same trace
+            String correlationId = MDC.get("correlationId");
+
+            snsTemplate.send(orderEventsTopicArn,
+                    MessageBuilder.withPayload(message)
+                            .setHeader("eventType", "ORDER_PLACED")
+                            .setHeader("correlationId", correlationId)
+                            .build());
+
+            log.info("Published ORDER_PLACED event for orderId: {}", event.getOrderId());
+
+        } catch (Exception e) {
+            log.error("Failed to publish ORDER_CREATED event for orderId: {}",
+                    event.getOrderId(), e);
+            throw new RuntimeException("Failed to publish order event", e);
+        }
+    }
 }
