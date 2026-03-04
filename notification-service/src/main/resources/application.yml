@@ -1,0 +1,33 @@
+spring:
+  application:
+    name: notification-service
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/orderdb?TimeZone=Asia/Kolkata
+    username: admin
+    password: admin
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+
+  cloud:
+    aws:
+      credentials:
+        access-key: YOUR_ACCESS_KEY
+        secret-key: YOUR_SECRET_KEY
+      region:
+        static: ap-southeast-2
+      sqs:
+        notification-queue-url: https://sqs.ap-southeast-2.amazonaws.com/211888003693/notification-queue
+        notification-dlq-url: https://sqs.ap-southeast-2.amazonaws.com/211888003693/notification-dlq-queue
+
+server:
+  port: 8084
+
+notification:
+  ses:
+    sender-email: shubhamd1109@gmail.com
+    sender-name: Order Platform
