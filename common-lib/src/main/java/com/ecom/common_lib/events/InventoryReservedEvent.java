@@ -10,13 +10,13 @@ import java.util.UUID;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class OrderCreatedEvent {
+public class InventoryReservedEvent {
 
     private UUID orderId;
-    private UUID userId;
     private UUID productId;
+    private UUID userId;
     private int quantity;
-    private String status;
     private BigDecimal amount;
-    private Instant createdAt;
+    private String correlationId;
+    private Instant reservedAt;
 }
